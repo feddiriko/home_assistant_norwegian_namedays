@@ -1,7 +1,7 @@
 {
   "domain": "norwegian_namedays",
   "name": "Norwegian Namedays",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "documentation": "https://github.com/feddiriko/home_assistant_norwegian_namedays",
   "requirements": [],
   "dependencies": [],

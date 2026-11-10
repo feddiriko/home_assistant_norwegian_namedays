@@ -88,7 +88,7 @@ class NamedaysSensor(SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose the full comment and the offline source data."""
+        """Expose the comment data and the offline source metadata."""
         item = self._today_item()
         if self.entity_description.key == "comment":
             comment = item.get("comment", "") if item else ""
@@ -98,7 +98,6 @@ class NamedaysSensor(SensorEntity):
                 **({"full_comment": comment} if len(comment) > MAX_STATE_LENGTH else {}),
             }
         return {
-            "all_names": [entry["names"] for entry in CALENDAR],
             "data_source": "Bundled offline calendar (Norwegian Wikipedia namedays list)",
         }
 
