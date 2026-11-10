@@ -1,16 +1,11 @@
 {
-  "config": {
-    "step": {
-      "user": {
-        "title": "Norwegian Namedays",
-        "description": "Add the offline Norwegian namedays calendar."
-      }
-    }
-  },
-  "entity": {
-    "sensor": {
-      "today": {"name": "Navnedag i dag"},
-      "comment": {"name": "Kommentar"}
-    }
-  }
+  "domain": "norwegian_namedays",
+  "name": "Norwegian Namedays",
+  "version": "1.1.1",
+  "documentation": "https://github.com/feddiriko/home_assistant_norwegian_namedays",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@feddiriko"],
+  "config_flow": true,
+  "iot_class": "local_poll"
 }
