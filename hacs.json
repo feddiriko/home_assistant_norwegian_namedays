@@ -1,7 +1,12 @@
 {
-    "name": "Norwegian namedays",
-    "domains": [
-        "sensor"
-    ],
-    "iot_class": "Cloud Polling"
+  "name": "Norwegian Namedays",
+  "content_in_root": false,
+  "domains": [
+    "sensor"
+  ],
+  "country": [
+    "no"
+  ],
+  "homeassistant": "2024.1.0",
+  "render_readme": true
 }
