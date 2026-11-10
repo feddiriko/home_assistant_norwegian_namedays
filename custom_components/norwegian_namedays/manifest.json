@@ -1,10 +1,11 @@
 {
   "domain": "norwegian_namedays",
   "name": "Norwegian Namedays",
-  "version": "1.0.0",
-  "documentation": "https://www.example.com/",
+  "version": "1.1.0",
+  "documentation": "https://github.com/feddiriko/home_assistant_norwegian_namedays",
   "requirements": [],
   "dependencies": [],
-  "codeowners": ["@grotteru"],
-  "config_flow": true
+  "codeowners": ["@feddiriko"],
+  "config_flow": true,
+  "iot_class": "local_poll"
 }
