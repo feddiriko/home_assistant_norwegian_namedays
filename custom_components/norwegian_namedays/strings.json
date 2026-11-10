@@ -9,8 +9,8 @@
   },
   "entity": {
     "sensor": {
-      "today": {"name": "Namedays Today"},
-      "comment": {"name": "Kommentar"}
+      "today": {"name": "Today's Name Day"},
+      "comment": {"name": "Name Day Comment"}
     }
   }
 }

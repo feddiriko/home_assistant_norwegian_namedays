@@ -9,10 +9,21 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import NamedaysUpdateCoordinator
 
+NO_NAME_DAY = "No name day"
+NO_COMMENT = "No comment available"
+MAX_STATE_LENGTH = 255
 
 SENSORS: tuple[SensorEntityDescription, ...] = (
-    SensorEntityDescription(key="today", translation_key="today"),
-    SensorEntityDescription(key="comment", translation_key="comment"),
+    SensorEntityDescription(
+        key="today",
+        translation_key="today",
+        icon="mdi:account-calendar",
+    ),
+    SensorEntityDescription(
+        key="comment",
+        translation_key="comment",
+        icon="mdi:comment-text-outline",
+    ),
 )
 
 
@@ -37,23 +48,41 @@ class NamedaysSensor(CoordinatorEntity[NamedaysUpdateCoordinator], SensorEntity)
         self._attr_unique_id = f"{entry_id}_{description.key}"
 
     @property
-    def native_value(self) -> str | None:
-        """Return today's names or comment from the bundled calendar."""
+    def native_value(self) -> str:
+        """Return today's names or a clear fallback when the value is empty."""
         item = self._today_item()
         if item is None:
-            return None
-        value = item.get("names" if self.entity_description.key == "today" else "comment")
-        if isinstance(value, list):
-            return ", ".join(value) or None
-        return value or None
+            return NO_NAME_DAY if self.entity_description.key == "today" else NO_COMMENT
+
+        if self.entity_description.key == "today":
+            names = item.get("names")
+            if not isinstance(names, list):
+                return NO_NAME_DAY
+            value = ", ".join(str(name).strip() for name in names if str(name).strip())
+            return value or NO_NAME_DAY
+
+        comment = item.get("comment")
+        if not isinstance(comment, str) or not comment.strip():
+            return NO_COMMENT
+        # HA entity states have a 255-character limit. Keep a readable state and
+        # provide the complete text in an attribute when it is longer.
+        comment = comment.strip()
+        return comment if len(comment) <= MAX_STATE_LENGTH else comment[: MAX_STATE_LENGTH - 1] + "…"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose the local calendar on the names sensor."""
-        if self.entity_description.key != "today":
-            return {}
+        """Expose helpful calendar details and preserve long comment text."""
+        item = self._today_item()
+        if self.entity_description.key == "comment":
+            comment = item.get("comment") if item else None
+            comment = comment.strip() if isinstance(comment, str) else ""
+            return {
+                "comment_available": bool(comment),
+                **({"full_comment": comment} if len(comment) > MAX_STATE_LENGTH else {}),
+            }
+
         return {
-            "all_names": [item["names"] for item in self.coordinator.data],
+            "all_names": [entry.get("names", []) for entry in self.coordinator.data],
             "data_source": "Bundled offline calendar (Wikipedia Norwegian namedays list)",
         }
 
@@ -64,7 +93,7 @@ class NamedaysSensor(CoordinatorEntity[NamedaysUpdateCoordinator], SensorEntity)
             (
                 item
                 for item in self.coordinator.data
-                if item["month"] == today.month and item["day"] == today.day
+                if item.get("month") == today.month and item.get("day") == today.day
             ),
             None,
         )
