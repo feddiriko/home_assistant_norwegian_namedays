@@ -45,7 +45,11 @@ class NamedaysSensor(CoordinatorEntity[NamedaysUpdateCoordinator], SensorEntity)
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
+        # Keep unique IDs stable for entity-registry continuity, but use a
+        # readable object ID for new entities instead of exposing the random
+        # config-entry ID in the entity ID.
         self._attr_unique_id = f"{entry_id}_{description.key}"
+        self._attr_suggested_object_id = f"{DOMAIN}_{description.key}"
 
     @property
     def native_value(self) -> str:
