@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Norwegian Namedays",
+        "description": "Add the offline Norwegian namedays calendar."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "today": {"name": "Namedays Today"},
+      "comment": {"name": "Kommentar"}
+    }
+  }
+}

@@ -1,59 +1,70 @@
-"""Platform for Namedays sensor."""
-from datetime import date,timedelta
-from homeassistant.components.sensor import SensorEntity
-from .const import DOMAIN
-import logging
+"""Sensor platform for Norwegian Namedays."""
+
+from typing import Any
+
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-_LOGGER = logging.getLogger(__name__)
-
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up Namedays sensor."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([NamedaysSensor(coordinator)])
+from .const import DOMAIN
+from .coordinator import NamedaysUpdateCoordinator
 
 
-class NamedaysSensor(SensorEntity):
-    """Representation of the Namedays Sensor."""
+SENSORS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(key="today", translation_key="today"),
+    SensorEntityDescription(key="comment", translation_key="comment"),
+)
 
-    def __init__(self, coordinator):
+
+async def async_setup_entry(hass, config_entry, async_add_entities) -> None:
+    """Set up namedays sensors."""
+    coordinator: NamedaysUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    async_add_entities(
+        NamedaysSensor(coordinator, config_entry.entry_id, description)
+        for description in SENSORS
+    )
+
+
+class NamedaysSensor(CoordinatorEntity[NamedaysUpdateCoordinator], SensorEntity):
+    """Representation of today's names or Wikipedia comment."""
+
+    entity_description: SensorEntityDescription
+
+    def __init__(self, coordinator, entry_id: str, description) -> None:
         """Initialize the sensor."""
-        self.coordinator = coordinator
-        self._name = "Namedays Today"
-        self._state = None
-        self._next_update = dt_util.now() - timedelta(minutes=1)
-        self.update_today()
-
-    def update_today(self):
-        """Update today's names based on the stored API data."""
-        if dt_util.now() > self._next_update:
-            today = dt_util.now()
-            for item in self.coordinator.data:
-                if item.get("month") == today.month and item.get("day") == today.day:
-                    self._state = ", ".join(item.get("names", []))
-                    self._next_update = dt_util.start_of_local_day(dt_util.now() + timedelta(days=1))
-                    _LOGGER.debug("Opddaterer sensoren %s. Neste oppdatering gjøres: %s",item.get("names",[]),self._next_update.isoformat())
-                    return
-            self._state = "No nameday"
-            self._next_update = dt_util.start_of_local_day(dt_util.now() + timedelta(days=1))
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"{entry_id}_{description.key}"
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+    def native_value(self) -> str | None:
+        """Return today's names or comment from the bundled calendar."""
+        item = self._today_item()
+        if item is None:
+            return None
+        value = item.get("names" if self.entity_description.key == "today" else "comment")
+        if isinstance(value, list):
+            return ", ".join(value) or None
+        return value or None
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return additional attributes."""
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the local calendar on the names sensor."""
+        if self.entity_description.key != "today":
+            return {}
         return {
             "all_names": [item["names"] for item in self.coordinator.data],
+            "data_source": "Bundled offline calendar (Wikipedia Norwegian namedays list)",
         }
 
-    async def async_update(self):
-        """Update the sensor for the new day."""
-        self.update_today()
+    def _today_item(self) -> dict[str, Any] | None:
+        """Find today's entry, including leap day, in the local calendar."""
+        today = dt_util.now().date()
+        return next(
+            (
+                item
+                for item in self.coordinator.data
+                if item["month"] == today.month and item["day"] == today.day
+            ),
+            None,
+        )
