@@ -1,5 +1,7 @@
 """Offline Norwegian name-day sensors."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
@@ -8,7 +10,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .namedays import CALENDAR, CALENDAR_BY_DATE
+from .namedays import CALENDAR
 
 NO_NAME_DAY = "No name day"
 MAX_STATE_LENGTH = 255
@@ -30,24 +32,24 @@ SENSORS: tuple[SensorEntityDescription, ...] = (
 async def async_setup_entry(hass, config_entry, async_add_entities) -> None:
     """Set up the calendar sensors."""
     async_add_entities(
-        NamedaysSensor(description) for description in SENSORS,
+        [NamedaysSensor(description) for description in SENSORS],
         update_before_add=True,
     )
 
 
 class NamedaysSensor(SensorEntity):
-    """Show today's name day or its accompanying comment."""
+    """Show today's name day or the explanatory comment."""
 
     entity_description: SensorEntityDescription
 
     def __init__(self, description: SensorEntityDescription) -> None:
-        """Initialize a sensor with stable identity independent of entry IDs."""
+        """Initialize a sensor with a stable identity."""
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{description.key}"
         self._attr_suggested_object_id = self._attr_unique_id
 
     async def async_added_to_hass(self) -> None:
-        """Refresh the sensor at local midnight without polling the calendar."""
+        """Refresh when the local day rolls over."""
         await super().async_added_to_hass()
         self.async_on_remove(
             async_track_time_change(
@@ -61,12 +63,12 @@ class NamedaysSensor(SensorEntity):
 
     @callback
     def _handle_midnight(self, _now) -> None:
-        """Write new state when the local calendar date changes."""
+        """Write a fresh state at midnight."""
         self.async_write_ha_state()
 
     @property
     def native_value(self) -> str | None:
-        """Return the names, comment, or an unknown value when absent."""
+        """Return the current names or comment."""
         item = self._today_item()
         if item is None:
             return NO_NAME_DAY if self.entity_description.key == "today" else None
@@ -86,7 +88,7 @@ class NamedaysSensor(SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Provide source and full comment where the entity state is truncated."""
+        """Expose the full comment and the offline source data."""
         item = self._today_item()
         if self.entity_description.key == "comment":
             comment = item.get("comment", "") if item else ""
@@ -102,6 +104,9 @@ class NamedaysSensor(SensorEntity):
 
     @staticmethod
     def _today_item() -> dict[str, Any] | None:
-        """Look up today's entry directly in the date-indexed local calendar."""
+        """Look up today's entry in the offline calendar."""
         today = dt_util.now().date()
-        return CALENDAR_BY_DATE.get((today.month, today.day))
+        for item in CALENDAR:
+            if item.get("month") == today.month and item.get("day") == today.day:
+                return item
+        return None
